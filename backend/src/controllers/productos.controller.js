@@ -47,7 +47,7 @@ const eliminarProducto = async (req, res) => {
         if (!borrarProducto) {
             return res.status(404).json({ message: 'Producto no encontrado' });
         }
-        res.status(200).json(borrarProducto); // Cambiar a 200 para eliminación
+        res.status(200).json(borrarProducto);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

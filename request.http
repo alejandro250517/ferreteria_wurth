@@ -1,0 +1,71 @@
+POST http://localhost:4000/api/productos/registrar-producto
+Content-Type: application/json
+
+{
+    "codigo": "000001",
+    "nombre": "Destornillador",
+    "categoria": "Herramienta manual",
+    "descripcion": "Destornillador 5P Estrella",
+    "proveedor": "Homecenter",
+    "precio_unitario": "13000" 
+}
+
+
+###
+
+POST http://localhost:4000/api/ingresos/registrar-ingreso
+Content-Type: application/json
+
+{
+  "productoId": "6711981ffd38360dbb5cd1c7",
+  "cantidad_ingresada": 600,
+  "fecha_ingreso": "2024-10-17",
+  "proveedor": "Homecenter",
+  "precio_unitario": 13000
+}
+
+###
+
+GET http://localhost:4000/api/ingresos/obtener-ingresos
+
+###
+
+PUT  http://localhost:4000/api/ingresos/actualizar-ingreso/671497509bea14ce6d7b64b5
+
+{
+    "cantidad_ingresada": 4444,
+    "fecha_ingreso": "2024-10-26T00:00:00.000Z",
+    "proveedor": "Prueba",
+    "precio_unitario": 240000,
+    "precio_total": 72000000,
+}
+
+###
+
+DELETE http://localhost:4000/api/ingresos/eliminar-ingreso/67140944045c7374a57a5f69
+
+
+###
+
+GET http://localhost:4000/api/inventario/obtener-inventario
+
+###
+
+POST http://localhost:4000/api/pedidos/registrar-pedido
+
+  {
+  "productos": [
+    {
+      "productoId": "67148a7e6f96f712b8c66572", // Reemplaza con un ObjectId válido de Producto
+      "cantidad": 2,
+      "precio": 50,
+      "subtotal": 100
+    }
+  ],
+  "cliente": "Juan Pérez",
+  "telefono": 3001234567,
+  "direccion": "Calle 123",
+  "ciudad": "Bogotá",
+  "vendedor": "Vendedor A",
+  "total": 100
+}

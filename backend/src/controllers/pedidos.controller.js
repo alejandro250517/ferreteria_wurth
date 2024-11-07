@@ -1,69 +1,82 @@
+const mongoose = require('mongoose');
 const Pedido = require('../models/Pedido');
-const Producto = require('../models/Producto');
 const Inventario = require('../models/Inventario');
 
 const registrarPedido = async (req, res) => {
     try {
-        const { productos, cliente, telefono, direccion, ciudad, vendedor} = req.body;
-    
-        if (!productos || productos.length === 0) {
-          return res.status(400).json({ error: 'Debe incluir al menos un producto en el pedido' });
+      const { productos, cliente } = req.body;
+  
+      let precioTotalPedido = 0;
+      const productosPedido = [];
+  
+      for (const item of productos) {
+        const { productoId, cantidad_pedida, precio_unitario } = item;
+        const cantidadNumerica = parseInt(cantidad_pedida, 10);
+        const precioTotalProducto = cantidadNumerica * precio_unitario;
+        precioTotalPedido += precioTotalProducto;
+  
+        let inventario = await Inventario.findOne({ producto: productoId });
+        if (!inventario || inventario.cantidad < cantidadNumerica) {
+          return res.status(400).json({ message: `Cantidad insuficiente en inventario para el producto ${productoId}` });
         }
-    
-        // Calcular el total del pedido
-        let total = 0;
-        const productosDetalles = [];
-    
-        for (let item of productos) {
-          const producto = await Producto.findById(item.productoId);
-          if (!producto) {
-            return res.status(400).json({ error: `Producto con ID ${item.productoId} no encontrado` });
-          }
-    
-          // Calcular el subtotal para este producto
-          const subtotal = producto.precio * item.cantidad;
-          total += subtotal;
-    
-          // Agregar el detalle del producto al array
-          productosDetalles.push({
-            productoId: producto._id,
-            cantidad: item.cantidad,
-            precio: producto.precio,
-            subtotal: subtotal
-          });
-        }
-    
-        // Crear un nuevo pedido con el total calculado y detalles de productos
-        const nuevoPedido = new Pedido({
-          productos: productosDetalles,
-          total: total,
-          cliente: cliente,
-          telefono: telefono,
-          direccion: direccion,
-          ciudad: ciudad,
-          vendedor: vendedor
+  
+        productosPedido.push({
+          productoId,
+          cantidad_pedida: cantidadNumerica,
+          precio_unitario,
+          precio_total: precioTotalProducto,
         });
-    
-        await nuevoPedido.save();
-    
-        // Actualizar el inventario
-        for (const item of productos) {
-          const inventario = await Inventario.findOne({ producto: item.productoId });
-          console.log(`Producto: ${item.productoId}, Cantidad Solicitada: ${item.cantidad}, Cantidad en Inventario: ${inventario ? inventario.cantidad : 'No encontrado'}`);
-    
-          if (inventario && inventario.cantidad >= item.cantidad) {
-            inventario.cantidad -= item.cantidad;
-            await inventario.save();
-          } else {
-            return res.status(400).json({ message: `Stock insuficiente para el producto ${item.productoId}` });
-          }
-        }
-    
-        res.status(201).json(nuevoPedido);
-      } catch (error) {
-        res.status(500).json({ message: error.message });
+  
+        inventario.cantidad -= cantidadNumerica;
+        await inventario.save();
       }
+  
+      const nuevoPedido = new Pedido({
+        productos: productosPedido,
+        cliente,
+        precio_total: precioTotalPedido,
+      });
+      await nuevoPedido.save();
+  
+      res.status(201).json({ message: 'Pedido registrado con éxito', pedido: nuevoPedido });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+  
+const obtenerPedidos = async (req, res) => {
+  try {
+    const pedidos = await Pedido.find().populate('productos.productoId');
+    res.status(200).json(pedidos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }
 
-module.exports = {registrarPedido}
+const eliminarPedido = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'ID no válido' });
+  }
+  try {
+    const pedido = await Pedido.findById(id);
+    if (!pedido) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
 
+    // Revertir la cantidad en el inventario
+    const inventario = await Inventario.findOne({ producto: pedido.productoId });
+    if (inventario) {
+      inventario.cantidad += pedido.cantidad_pedida;
+      await inventario.save();
+    }
+
+    // Eliminar el pedido
+    await Pedido.findByIdAndDelete(id);
+    res.status(200).json({ message: 'Pedido eliminado con éxito' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+module.exports = { registrarPedido, obtenerPedidos, eliminarPedido };

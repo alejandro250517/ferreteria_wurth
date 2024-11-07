@@ -5,23 +5,45 @@ const Inventario = require('../models/Inventario');
 
 const registrarIngreso = async (req, res) => {
   try {
-    const { productoId, cantidad_recibida, numero_factura, precio_compra_unitario, costo_total, ubicacion_almacen, usuario, observaciones } = req.body;
+    const { productoId, cantidad_ingresada, fecha_ingreso, proveedor, precio_unitario } = req.body;
 
-    const cantidadNumerica = parseInt(cantidad_recibida, 10)
+    // Convertir la cantidad ingresada a un valor numérico
+    const cantidadNumerica = parseInt(cantidad_ingresada, 10);
 
-    const nuevoIngreso = new Ingreso({ productoId, cantidad_recibida: cantidadNumerica, numero_factura, precio_compra_unitario, costo_total, ubicacion_almacen, usuario, observaciones });
-    await nuevoIngreso.save();
+    // Calcular el precio total
+    const precio_total = cantidadNumerica * precio_unitario;
 
+      // Si no existe, creamos un nuevo ingreso
+      const nuevoIngreso = new Ingreso({
+        productoId,
+        cantidad_ingresada: cantidadNumerica,
+        fecha_ingreso,
+        proveedor,
+        precio_unitario,
+        precio_total // Guardamos el precio total
+      });
+      await nuevoIngreso.save();
+    //}
+
+    // Actualizar o crear el inventario
     let inventario = await Inventario.findOne({ producto: productoId });
     if (inventario) {
-      inventario.cantidad += cantidad_recibida;
+      inventario.cantidad += cantidadNumerica;
+      
     } else {
-      inventario = new Inventario({ producto: productoId, cantidad: cantidadNumerica });
+      inventario = new Inventario({
+        producto: productoId,
+        cantidad: cantidadNumerica
+      });
     }
+
     await inventario.save();
 
-    res.status(201).json(nuevoIngreso);
+
+    // Respuesta exitosa
+    res.status(201).json({ message: "Ingreso registrado o actualizado con éxito" });
   } catch (error) {
+    // Manejo de errores
     res.status(500).json({ message: error.message });
   }
 }
@@ -35,4 +57,49 @@ const obtenerIngresos = async (req, res) => {
   }
 }
 
-module.exports = { registrarIngreso, obtenerIngresos }
+const actualizarIngreso = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'ID no valido' });
+  }
+  try {
+
+    //Obtener el ingreso para actualizarlo
+    const ingresoPrevio = await Ingreso.findById(id);
+    if (!ingresoPrevio) {
+      return res.status(404).json({ message: 'Ingreso no encontrado' });
+    }
+
+    const {productoId, cantidad_ingresada:nuevaCantidadIngresada} = req.body;
+
+    //Calcular la diferencia de la cantidad ingresada
+    const diferenciaCantidad = parseInt(nuevaCantidadIngresada, 10) - parseInt(ingresoPrevio.cantidad_ingresada);
+
+    const modificarIngreso = await Ingreso.findByIdAndUpdate(id, req.body, { new: true });
+    if (!modificarIngreso) {
+      return res.status(404).json({ message: 'Ingreso no encontrado' });
+    }
+    res.status(200).json(modificarIngreso);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+const eliminarIngreso = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'ID no valido' });
+  }
+  try {
+    const borrarIngreso = await Ingreso.findByIdAndDelete(id);
+    if (!borrarIngreso) {
+      return res.status(404).json({ message: 'Ingreso no encontrado' });
+    }
+    res.status(200).json(borrarIngreso); 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+
+module.exports = { registrarIngreso, obtenerIngresos, actualizarIngreso, eliminarIngreso };
