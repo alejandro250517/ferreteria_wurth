@@ -22,5 +22,5 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-    console.log('Servidor inicializado en puerto ${port}');
+    console.log(`Servidor iniciado en puerto ${port}`);
 });
