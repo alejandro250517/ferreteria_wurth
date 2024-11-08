@@ -20,7 +20,7 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 
 
 
-
-app.listen(4000, () => {
-    console.log('Servidor inicializado en puerto 4000');
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+    console.log('Servidor inicializado en puerto ${port}');
 });
